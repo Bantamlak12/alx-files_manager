@@ -97,6 +97,60 @@ class FilesController {
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
+
+  static async getShow(req, res) {
+    const token = req.headers['x-token'];
+
+    try {
+      // Get the user Id using the token
+      const userId = await redisClient.get(`auth_${token}`);
+
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      // Get the file document associated to the document.
+      const fileID = req.params.id;
+      const file = await dbClient.client
+        .db(dbClient.dbName)
+        .collection('files')
+        .findOne({ _id: ObjectId(fileID), userId });
+
+      if (!file) return res.status(404).json({ error: 'Not found' });
+
+      return res.status(200).json(file);
+    } catch (err) {
+      console.log(`Error: ${err}`);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async getIndex(req, res) {
+    const token = req.headers['x-token'];
+
+    try {
+      // Get the user Id using the token
+      const userId = await redisClient.get(`auth_${token}`);
+
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      // Get the query parameters
+      const parentID = req.query.parentId || 0;
+      const pageNum = req.query.page || 0;
+      const pageSize = 20;
+
+      const files = await dbClient.client
+        .db(dbClient.dbName)
+        .collection('files')
+        .find({ parentId: +parentID, userId })
+        .skip(+pageNum * pageSize)
+        .limit(pageSize)
+        .toArray();
+
+      return res.json(files);
+    } catch (err) {
+      console.log(`Error: ${err}`);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
 }
 
 module.exports = FilesController;
