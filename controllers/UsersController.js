@@ -1,5 +1,7 @@
 const crypto = require('crypto');
+const { ObjectId } = require('mongodb');
 const dbClient = require('../utils/db');
+const redisClient = require('../utils/redis');
 
 class UsersController {
   static async postNew(req, res) {
@@ -46,6 +48,26 @@ class UsersController {
       return res.status(201).json(insertedUser);
     } catch (err) {
       console.error(`Error creating user: ${err}`);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async getMe(req, res) {
+    const token = req.headers['x-token'];
+    if (!token) return res.status(400).json({ error: 'Token is missing.' });
+
+    try {
+      const userId = await redisClient.get(`auth_${token}`);
+
+      const user = await dbClient.client
+        .db(dbClient.dbName)
+        .collection('users')
+        .findOne({ _id: ObjectId(userId) });
+
+      if (!user) return res.status(401).json({ error: 'Unauthorized' });
+      return res.json({ email: user.email, id: user._id });
+    } catch (err) {
+      console.log(`Error: ${err}`);
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
