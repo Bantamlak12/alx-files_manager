@@ -151,6 +151,70 @@ class FilesController {
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
+
+  static async putPublish(req, res) {
+    const token = req.headers['x-token'];
+    const fileId = req.params.id;
+
+    try {
+      // Get the user Id using the token
+      const userId = await redisClient.get(`auth_${token}`);
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      const file = dbClient.client
+        .db(dbClient.dbName)
+        .collection('files')
+        .find({ _id: ObjectId(fileId), userId });
+
+      if (!file) return res.status(404).json({ error: 'Not found' });
+      await dbClient.client
+        .db(dbClient.dbName)
+        .collection('files')
+        .updateOne({ _id: ObjectId(fileId) }, { $set: { isPublic: true } });
+
+      const updatedFile = await dbClient.client
+        .db(dbClient.dbName)
+        .conllection('files')
+        .findOne({ _id: ObjectId(fileId) });
+
+      return res.status(200).json(updatedFile);
+    } catch (err) {
+      console.log(`Error: ${err}`);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async putUnpublish(req, res) {
+    const token = req.headers['x-token'];
+    const fileId = req.params.id;
+
+    try {
+      // Get the user Id using the token
+      const userId = await redisClient.get(`auth_${token}`);
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      const file = dbClient.client
+        .db(dbClient.dbName)
+        .collection('files')
+        .find({ _id: ObjectId(fileId), userId });
+
+      if (!file) return res.status(404).json({ error: 'Not found' });
+      await dbClient.client
+        .db(dbClient.dbName)
+        .collection('files')
+        .updateOne({ _id: ObjectId(fileId) }, { $set: { isPublic: false } });
+
+      const updatedFile = await dbClient.client
+        .db(dbClient.dbName)
+        .conllection('files')
+        .findOne({ _id: ObjectId(fileId) });
+
+      return res.status(200).json(updatedFile);
+    } catch (err) {
+      console.log(`Error: ${err}`);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
 }
 
 module.exports = FilesController;
