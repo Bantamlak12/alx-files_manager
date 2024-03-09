@@ -71,7 +71,7 @@ class UsersController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      return res.json({ id: user._id, email: user.email });
+      return res.json({ id: user._id.toString(), email: user.email });
     } catch (err) {
       console.log(`Error: ${err}`);
       return res.status(500).json({ error: 'Internal Server Error' });
