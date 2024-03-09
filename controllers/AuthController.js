@@ -5,11 +5,7 @@ const redisClient = require('../utils/redis');
 
 class AuthController {
   static async getConnect(req, res) {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Basic ')) {
-      return res.status(400).json({ error: 'Bad Request' });
-    }
+    const authHeader = req.header('Authorization');
 
     const encodedCredentials = authHeader.split(' ')[1];
     const decodedCredentials = Buffer.from(
@@ -44,7 +40,8 @@ class AuthController {
       const key = `auth_${token}`;
 
       // Store the id in redis
-      await redisClient.set(key, user._id.toString(), 24 * 60 * 60);
+      // 86,400 is expiration time of a day (24h *  3600s)
+      await redisClient.set(key, user._id.toString(), 86400);
       return res.status(200).json({ token });
     } catch (err) {
       console.error(`Error: ${err}`);
@@ -53,7 +50,7 @@ class AuthController {
   }
 
   static async getDisconnect(req, res) {
-    const token = req.headers['x-token'];
+    const token = req.header('X-Token');
 
     try {
       // Retrieve the user ID based on the token
@@ -67,7 +64,7 @@ class AuthController {
       // Delete the token from Redis
       await redisClient.del(`auth_${token}`);
 
-      return res.sendStatus(204);
+      return res.status(204).json({});
     } catch (err) {
       console.log(`Error: ${err}`);
       return res.status(500).json({ error: 'Internal Server Error' });
