@@ -1,4 +1,5 @@
-const crypto = require('crypto');
+// const crypto = require('crypto');
+const sha1 = require('sha1');
 const { v4: uuidv4 } = require('uuid');
 const dbClient = require('../utils/db');
 const redisClient = require('../utils/redis');
@@ -16,10 +17,12 @@ class AuthController {
 
     try {
       //   Hash the password
-      const hashedpasswd = crypto
-        .createHash('sha1')
-        .update(password, 'utf-8')
-        .digest('hex');
+      // const hashedpasswd = crypto
+      //   .createHash('sha1')
+      //   .update(password, 'utf-8')
+      //   .digest('hex');
+
+      const hashedpasswd = sha1(password);
 
       //   Find the user associated to this email and hashed password
       const user = await dbClient.client
@@ -40,7 +43,7 @@ class AuthController {
       const key = `auth_${token}`;
 
       // Store the id in redis
-      // 86,400 is expiration time of a day (24h *  3600s)
+      // 86,400 is expiration time of the token in a day (24h *  3600s)
       await redisClient.set(key, user._id.toString(), 86400);
       return res.status(200).json({ token });
     } catch (err) {
