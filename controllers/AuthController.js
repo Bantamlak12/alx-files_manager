@@ -1,5 +1,4 @@
-// const crypto = require('crypto');
-const sha1 = require('sha1');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const dbClient = require('../utils/db');
 const redisClient = require('../utils/redis');
@@ -7,6 +6,10 @@ const redisClient = require('../utils/redis');
 class AuthController {
   static async getConnect(req, res) {
     const authHeader = req.header('Authorization');
+
+    if (!authHeader || !authHeader.startsWith('Basic ')) {
+      return res.status(400).json({ error: 'Bad Request' });
+    }
 
     const encodedCredentials = authHeader.split(' ')[1];
     const decodedCredentials = Buffer.from(
@@ -17,12 +20,10 @@ class AuthController {
 
     try {
       //   Hash the password
-      // const hashedpasswd = crypto
-      //   .createHash('sha1')
-      //   .update(password, 'utf-8')
-      //   .digest('hex');
-
-      const hashedpasswd = sha1(password);
+      const hashedpasswd = crypto
+        .createHash('sha1')
+        .update(password, 'utf-8')
+        .digest('hex');
 
       //   Find the user associated to this email and hashed password
       const user = await dbClient.client
@@ -47,7 +48,6 @@ class AuthController {
       await redisClient.set(key, user._id.toString(), 86400);
       return res.status(200).json({ token });
     } catch (err) {
-      console.error(`Error: ${err}`);
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
@@ -69,7 +69,6 @@ class AuthController {
 
       return res.status(204).json({});
     } catch (err) {
-      console.log(`Error: ${err}`);
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   }

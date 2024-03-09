@@ -47,7 +47,6 @@ class UsersController {
 
       return res.status(201).json(insertedUser);
     } catch (err) {
-      console.error(`Error creating user: ${err}`);
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
@@ -69,7 +68,6 @@ class UsersController {
 
       return res.json({ id: user._id.toString(), email: user.email });
     } catch (err) {
-      console.log(`Error: ${err}`);
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
