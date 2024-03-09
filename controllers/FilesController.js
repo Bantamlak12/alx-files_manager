@@ -9,18 +9,15 @@ class FilesController {
   static async postUpload(req, res) {
     const token = req.headers['x-token'];
 
-    if (!token) return res.status(400).json({ error: 'Token is missing.' });
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
     try {
       // Retrieve the user based on the token
       const userId = await redisClient.get(`auth_${token}`);
-      // Find associated user based on the token
-      const user = await dbClient.client
-        .db(dbClient.dbName)
-        .collection('users')
-        .findOne({ _id: ObjectId(userId) });
 
-      if (!user) return res.status(401).json({ error: 'Unauthorized' });
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
       // Specifiy the file information
       const acceptedTypes = ['folder', 'file', 'image'];
@@ -69,8 +66,15 @@ class FilesController {
           .collection('files')
           .insertOne(fileDocument);
 
-        return res.status(201).json(newFile.ops[0]);
+        const { _id, ...rest } = newFile.ops[0];
+        const response = {
+          id: _id,
+          ...rest,
+        };
+
+        return res.status(201).json(response);
       }
+
       if (type === 'file' || type === 'image') {
         // Save file to disk
         const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
@@ -83,6 +87,8 @@ class FilesController {
 
         // Decode base64 data and write to file
         fs.writeFileSync(localPath, Buffer.from(data, 'base64'));
+
+        fileDocument.localPath = localPath;
       }
 
       // Add the new file document in the collection files
@@ -91,7 +97,13 @@ class FilesController {
         .collection('files')
         .insertOne(fileDocument);
 
-      return res.status(201).json(newFile.ops[0]);
+      const { _id, ...rest } = newFile.ops[0];
+      const response = {
+        id: _id,
+        ...rest,
+      };
+
+      return res.status(201).json(response);
     } catch (err) {
       console.log(`Error: ${err}`);
       return res.status(500).json({ error: 'Internal Server Error' });
