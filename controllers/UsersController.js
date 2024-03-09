@@ -65,7 +65,7 @@ class UsersController {
         .findOne({ _id: ObjectId(userId) });
 
       if (!user) return res.status(401).json({ error: 'Unauthorized' });
-      return res.json({ email: user.email, id: user._id });
+      return res.json({ id: user._id, email: user.email });
     } catch (err) {
       console.log(`Error: ${err}`);
       return res.status(500).json({ error: 'Internal Server Error' });
