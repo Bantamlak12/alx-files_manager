@@ -7,44 +7,43 @@ class AuthController {
   static async getConnect(req, res) {
     const authHeader = req.headers.authorization;
 
-    if (authHeader && authHeader.startsWith('Basic ')) {
-      const encodedCredentials = authHeader.split(' ')[1];
-      const decodedCredentials = Buffer.from(
-        encodedCredentials,
-        'base64',
-      ).toString('utf-8');
-
-      const [email, password] = decodedCredentials.split(':');
-
-      try {
-        //   Hash the password
-        const hashedpasswd = crypto
-          .createHash('sha1')
-          .update(password, 'utf-8')
-          .digest('hex');
-
-        //   Find the user associated to this email and hashed password
-        const user = await dbClient.client
-          .db(dbClient.dbName)
-          .collection('users')
-          .findOne({ $and: [{ email }, { password: hashedpasswd }] });
-
-        if (!user) {
-          return res.status(401).json({ error: 'Unauthorized' });
-        }
-
-        const token = uuidv4();
-        const key = `auth_${token}`;
-
-        // Store the id in redis
-        redisClient.set(key, user._id.toString(), 24 * 60 * 60);
-        return res.status(200).json({ token });
-      } catch (err) {
-        console.error(`Error: ${err}`);
-        return res.status(500).json({ error: 'Internal Server Error' });
-      }
-    } else {
+    if (!authHeader && !authHeader.startsWith('Basic ')) {
       return res.status(400).json({ error: 'Bad Request' });
+    }
+
+    const encodedCredentials = authHeader.split(' ')[1];
+    const decodedCredentials = Buffer.from(
+      encodedCredentials,
+      'base64',
+    ).toString('utf-8');
+    const [email, password] = decodedCredentials.split(':');
+
+    try {
+      //   Hash the password
+      const hashedpasswd = crypto
+        .createHash('sha1')
+        .update(password, 'utf-8')
+        .digest('hex');
+
+      //   Find the user associated to this email and hashed password
+      const user = await dbClient.client
+        .db(dbClient.dbName)
+        .collection('users')
+        .findOne({ $and: [{ email }, { password: hashedpasswd }] });
+
+      if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const token = uuidv4();
+      const key = `auth_${token}`;
+
+      // Store the id in redis
+      redisClient.set(key, user._id.toString(), 'EX', 24 * 60 * 60);
+      return res.status(200).json({ token });
+    } catch (err) {
+      console.error(`Error: ${err}`);
+      return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
 
