@@ -67,6 +67,10 @@ class UsersController {
         .collection('users')
         .findOne({ _id: ObjectId(userId) });
 
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
       return res.json({ id: user._id, email: user.email });
     } catch (err) {
       console.log(`Error: ${err}`);
