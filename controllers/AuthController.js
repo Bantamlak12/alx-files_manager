@@ -10,13 +10,14 @@ class AuthController {
     if (!authHeader || !authHeader.startsWith('Basic ')) {
       return res.status(400).json({ error: 'Bad Request' });
     }
-
+    console.log(authHeader);
     const encodedCredentials = authHeader.split(' ')[1];
     const decodedCredentials = Buffer.from(
       encodedCredentials,
       'base64',
     ).toString('utf-8');
-    const [email, password] = decodedCredentials.split(':');
+    const [email, ...rest] = decodedCredentials.split(':');
+    const password = rest.join(':');
 
     try {
       //   Hash the password
