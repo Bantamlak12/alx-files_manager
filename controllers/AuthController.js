@@ -29,7 +29,12 @@ class AuthController {
       const user = await dbClient.client
         .db(dbClient.dbName)
         .collection('users')
-        .findOne({ $and: [{ email }, { password: hashedpasswd }] });
+        .findOne({
+          $and: [
+            { email: { $eq: email } },
+            { password: { $eq: hashedpasswd } },
+          ],
+        });
 
       if (!user) {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -62,7 +67,7 @@ class AuthController {
       // Delete the token from Redis
       await redisClient.del(`auth_${token}`);
 
-      return res.status(204).send();
+      return res.sendStatus(204);
     } catch (err) {
       console.log(`Error: ${err}`);
       return res.status(500).json({ error: 'Internal Server Error' });
