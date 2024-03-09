@@ -10,7 +10,6 @@ class AuthController {
     if (!authHeader || !authHeader.startsWith('Basic ')) {
       return res.status(400).json({ error: 'Bad Request' });
     }
-    console.log(authHeader);
     const encodedCredentials = authHeader.split(' ')[1];
     const decodedCredentials = Buffer.from(
       encodedCredentials,
