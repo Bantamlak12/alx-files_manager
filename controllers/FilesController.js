@@ -128,7 +128,10 @@ class FilesController {
       const file = await dbClient.client
         .db(dbClient.dbName)
         .collection('files')
-        .findOne({ _id: ObjectId(fileID), userId });
+        .findOne({
+          _id: ObjectId(fileID),
+          userId,
+        });
 
       if (!file) return res.status(404).json({ error: 'Not found' });
 
@@ -153,16 +156,19 @@ class FilesController {
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
       // Get the query parameters
-      const parentID = req.query.parentId || 0;
-      const pageNum = req.query.page || 0;
+      const parentID = req.query.parentId ? ObjectId(req.query.parentId) : 0;
+      const pageNum = req.query.page ? req.query.page * 1 : 0;
       const pageSize = 20;
+      const skip = pageNum * pageSize;
 
       const files = await dbClient.client
         .db(dbClient.dbName)
         .collection('files')
-        .find({ parentId: +parentID, userId })
-        .skip(+pageNum * pageSize)
-        .limit(pageSize)
+        .aggregate([
+          { $match: { parentId: parentID, userId } },
+          { $skip: skip },
+          { $limit: pageSize },
+        ])
         .toArray();
 
       return res.json(files);
