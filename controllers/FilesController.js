@@ -121,9 +121,8 @@ class FilesController {
       // Get the user Id using the token
       const userId = await redisClient.get(`auth_${token}`);
 
-      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
       // Get the file document associated to the document.
-      const fileID = req.params.id || '';
+      const fileID = req.params.id;
 
       const user = await dbClient.client
         .db(dbClient.dbName)
@@ -135,17 +134,20 @@ class FilesController {
       const fileDocument = await dbClient.client
         .db(dbClient.dbName)
         .collection('files')
-        .findOne({ _id: ObjectId(fileID) });
+        .findOne({ _id: ObjectId(fileID), userId });
 
       if (!fileDocument) return res.status(404).json({ error: 'Not found' });
-      return res.status(200).json({
+
+      const response = {
         id: fileDocument._id,
         userId: fileDocument.userId,
         name: fileDocument.name,
         type: fileDocument.type,
         isPublic: fileDocument.isPublic,
         parentId: fileDocument.parentId,
-      });
+      };
+
+      return res.status(200).json(response);
     } catch (err) {
       console.log(`Error: ${err.message}`);
       return res.status(500).json({ error: 'Internal Server Error' });
