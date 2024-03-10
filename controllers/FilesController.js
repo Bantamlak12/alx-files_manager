@@ -53,7 +53,7 @@ class FilesController {
       // Add the user ID to the document
       //  Prepare file document
       const fileDocument = {
-        userId,
+        userId: ObjectId(userId),
         name,
         type,
         isPublic,
@@ -136,7 +136,7 @@ class FilesController {
       const fileDocument = await dbClient.client
         .db(dbClient.dbName)
         .collection('files')
-        .findOne({ _id: ObjectId(fileID), userId: user._id.toString() });
+        .findOne({ _id: ObjectId(fileID), userId: ObjectId(user._id) });
 
       if (!fileDocument) return res.status(404).json({ error: 'Not found' });
 
