@@ -113,22 +113,18 @@ class FilesController {
   static async getShow(req, res) {
     const token = req.headers['x-token'];
 
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
     try {
       // Validate if the fileId is a valid  ObjectId
       const ObjectIdRegex = /^[0-9a-fA-F]{24}$/;
 
-      // Get the user Id using the token
-      const userId = await redisClient.get(`auth_${token}`);
-
       // Get the file document associated to the document.
       let fileID = req.params.id;
-      fileID = !ObjectIdRegex.test.fileID
-        ? Buffer.alloc(24, '0').toString()
-        : req.params.id;
+      if (!ObjectIdRegex.test(fileID)) {
+        fileID = Buffer.alloc(24, '0').toString('utf-8');
+      }
+
+      // Get the user Id using the token
+      const userId = await redisClient.get(`auth_${token}`);
 
       const user = await dbClient.client
         .db(dbClient.dbName)
@@ -140,7 +136,7 @@ class FilesController {
       const fileDocument = await dbClient.client
         .db(dbClient.dbName)
         .collection('files')
-        .findOne({ _id: ObjectId(fileID), userId: user._id.toString() });
+        .findOne({ _id: ObjectId(fileID) });
 
       if (!fileDocument) return res.status(404).json({ error: 'Not found' });
 
@@ -163,14 +159,9 @@ class FilesController {
   static async getIndex(req, res) {
     const token = req.headers['x-token'];
 
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
     try {
       // Get the user Id using the token
       const userId = await redisClient.get(`auth_${token}`);
-      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
       const user = await dbClient.client
         .db(dbClient.dbName)
@@ -205,7 +196,7 @@ class FilesController {
         .aggregate(pipeline)
         .toArray();
 
-      const response = files.map((file) => ({
+      const response = await files.map((file) => ({
         id: file._id,
         userId: file.userId,
         name: file.name,
