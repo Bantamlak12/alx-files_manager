@@ -118,11 +118,17 @@ class FilesController {
     }
 
     try {
+      // Validate if the fileId is a valid  ObjectId
+      const ObjectIdRegex = /^[0-9a-fA-F]{24}$/;
+
       // Get the user Id using the token
       const userId = await redisClient.get(`auth_${token}`);
 
       // Get the file document associated to the document.
-      const fileID = req.params.id;
+      let fileID = req.params.id;
+      fileID = !ObjectIdRegex.test.fileID
+        ? Buffer.alloc(24, '0').toString()
+        : req.params.id;
 
       const user = await dbClient.client
         .db(dbClient.dbName)
