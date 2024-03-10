@@ -105,7 +105,7 @@ class FilesController {
 
       return res.status(201).json(response);
     } catch (err) {
-      console.log(`Error: ${err}`);
+      console.log(`Error: ${err.message}`);
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
@@ -122,22 +122,32 @@ class FilesController {
       const userId = await redisClient.get(`auth_${token}`);
 
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
       // Get the file document associated to the document.
-      const fileID = req.params.id;
-      const file = await dbClient.client
+      const fileID = req.params.id || '';
+
+      const user = await dbClient.client
+        .db(dbClient.dbName)
+        .collection('users')
+        .findOne({ _id: ObjectId(userId) });
+
+      if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+      const fileDocument = await dbClient.client
         .db(dbClient.dbName)
         .collection('files')
-        .findOne({
-          _id: ObjectId(fileID),
-          userId,
-        });
+        .findOne({ _id: ObjectId(fileID) });
 
-      if (!file) return res.status(404).json({ error: 'Not found' });
-
-      return res.status(200).json(file);
+      if (!fileDocument) return res.status(404).json({ error: 'Not found' });
+      return res.status(200).json({
+        id: fileDocument._id,
+        userId: fileDocument.userId,
+        name: fileDocument.name,
+        type: fileDocument.type,
+        isPublic: fileDocument.isPublic,
+        parentId: fileDocument.parentId,
+      });
     } catch (err) {
-      console.log(`Error: ${err}`);
+      console.log(`Error: ${err.message}`);
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
@@ -152,28 +162,53 @@ class FilesController {
     try {
       // Get the user Id using the token
       const userId = await redisClient.get(`auth_${token}`);
-
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
+      const user = await dbClient.client
+        .db(dbClient.dbName)
+        .collection('users')
+        .findOne({ _id: ObjectId(userId) });
+
+      if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
       // Get the query parameters
-      const parentID = req.query.parentId ? ObjectId(req.query.parentId) : 0;
-      const pageNum = req.query.page ? req.query.page * 1 : 0;
+      const parentId = req.query.parentId ? req.query.parentId : 0;
+      const page = req.query.page ? req.query.page * 1 : 0;
       const pageSize = 20;
-      const skip = pageNum * pageSize;
+      const skip = page * pageSize;
+
+      const matchStage = parentId ? { parentId: ObjectId(parentId) } : {};
+
+      const pipeline = [
+        {
+          $match: matchStage,
+        },
+        {
+          $skip: skip,
+        },
+        {
+          $limit: pageSize,
+        },
+      ];
 
       const files = await dbClient.client
         .db(dbClient.dbName)
         .collection('files')
-        .aggregate([
-          { $match: { parentId: parentID, userId } },
-          { $skip: skip },
-          { $limit: pageSize },
-        ])
+        .aggregate(pipeline)
         .toArray();
 
-      return res.json(files);
+      const response = files.map((file) => ({
+        id: file._id,
+        userId: file.userId,
+        name: file.name,
+        type: file.type,
+        isPublic: file.isPublic,
+        parentId: file.parentId,
+      }));
+
+      return res.json(response);
     } catch (err) {
-      console.log(`Error: ${err}`);
+      console.log(`Error: ${err.message}`);
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
