@@ -219,14 +219,21 @@ class FilesController {
     try {
       // Get the user Id using the token
       const userId = await redisClient.get(`auth_${token}`);
-      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-      const file = dbClient.client
+      const user = await dbClient.client
+        .db(dbClient.dbName)
+        .collection('users')
+        .findOne({ _id: ObjectId(userId) });
+
+      if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+      const file = await dbClient.client
         .db(dbClient.dbName)
         .collection('files')
-        .find({ _id: ObjectId(fileId), userId });
+        .findOne({ _id: ObjectId(fileId), userId: ObjectId(user._id) });
 
       if (!file) return res.status(404).json({ error: 'Not found' });
+
       await dbClient.client
         .db(dbClient.dbName)
         .collection('files')
@@ -234,12 +241,21 @@ class FilesController {
 
       const updatedFile = await dbClient.client
         .db(dbClient.dbName)
-        .conllection('files')
+        .collection('files')
         .findOne({ _id: ObjectId(fileId) });
 
-      return res.status(200).json(updatedFile);
+      const response = {
+        id: updatedFile._id,
+        userId: updatedFile.userId,
+        name: updatedFile.name,
+        type: updatedFile.type,
+        isPublic: updatedFile.isPublic,
+        parentId: updatedFile.parentId,
+      };
+
+      return res.status(200).json(response);
     } catch (err) {
-      console.log(`Error: ${err}`);
+      console.log(`Error: ${err.message}`);
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
@@ -251,14 +267,21 @@ class FilesController {
     try {
       // Get the user Id using the token
       const userId = await redisClient.get(`auth_${token}`);
-      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-      const file = dbClient.client
+      const user = await dbClient.client
+        .db(dbClient.dbName)
+        .collection('users')
+        .findOne({ _id: ObjectId(userId) });
+
+      if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+      const file = await dbClient.client
         .db(dbClient.dbName)
         .collection('files')
-        .find({ _id: ObjectId(fileId), userId });
+        .findOne({ _id: ObjectId(fileId), userId: ObjectId(user._id) });
 
       if (!file) return res.status(404).json({ error: 'Not found' });
+
       await dbClient.client
         .db(dbClient.dbName)
         .collection('files')
@@ -266,12 +289,21 @@ class FilesController {
 
       const updatedFile = await dbClient.client
         .db(dbClient.dbName)
-        .conllection('files')
+        .collection('files')
         .findOne({ _id: ObjectId(fileId) });
 
-      return res.status(200).json(updatedFile);
+      const response = {
+        id: updatedFile._id,
+        userId: updatedFile.userId,
+        name: updatedFile.name,
+        type: updatedFile.type,
+        isPublic: updatedFile.isPublic,
+        parentId: updatedFile.parentId,
+      };
+
+      return res.status(200).json(response);
     } catch (err) {
-      console.log(`Error: ${err}`);
+      console.log(`Error: ${err.message}`);
       return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
