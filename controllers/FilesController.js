@@ -1,6 +1,7 @@
-const { ObjectId } = require('mongodb');
 const fs = require('fs');
 const path = require('path');
+const mimeTypes = require('mime-types');
+const { ObjectId } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
 const dbClient = require('../utils/db');
 const redisClient = require('../utils/redis');
@@ -302,6 +303,61 @@ class FilesController {
       };
 
       return res.status(200).json(response);
+    } catch (err) {
+      console.log(`Error: ${err.message}`);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+
+  static async getFile(req, res) {
+    const token = req.headers['x-token'];
+    const fileId = req.params.id;
+
+    try {
+      // Get the user Id using the token
+      const userId = await redisClient.get(`auth_${token}`);
+
+      const user = await dbClient.client
+        .db(dbClient.dbName)
+        .collection('users')
+        .findOne({ _id: ObjectId(userId) });
+
+      if (!user) return res.status(401).json({ error: 'Not found' });
+
+      const file = await dbClient.client
+        .db(dbClient.dbName)
+        .collection('files')
+        .findOne({ _id: ObjectId(fileId), userId: user._id.toString() });
+
+      console.log(user);
+      console.log(file);
+
+      if (!file) return res.status(404).json({ error: 'Not found' });
+
+      if (!file.isPublic && (!user || !file)) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      if (file.type === 'folder') {
+        return res.status(400).json({ error: "A folder doesn't have content" });
+      }
+
+      if (!file.localPath) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      // Get the MIME type based on the filename
+      const mimeType = mimeTypes.lookup(file.name);
+
+      if (!mimeType) {
+        return res.status(500).json({ error: 'Unknown MIME type' });
+      }
+
+      // Read the file content
+      const fileContent = await fs.promises.readFile(file.localPath);
+      //  Set the HTTP headers
+      res.setHeader('Content-Type', mimeType);
+      return res.status(200).send(fileContent);
     } catch (err) {
       console.log(`Error: ${err.message}`);
       return res.status(500).json({ error: 'Internal Server Error' });
