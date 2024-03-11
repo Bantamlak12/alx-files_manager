@@ -317,24 +317,14 @@ class FilesController {
       // Get the user Id using the token
       const userId = await redisClient.get(`auth_${token}`);
 
-      const user = await dbClient.client
-        .db(dbClient.dbName)
-        .collection('users')
-        .findOne({ _id: ObjectId(userId) });
-
-      if (!user) return res.status(401).json({ error: 'Not found' });
-
       const file = await dbClient.client
         .db(dbClient.dbName)
         .collection('files')
-        .findOne({ _id: ObjectId(fileId), userId: user._id.toString() });
-
-      console.log(user);
-      console.log(file);
+        .findOne({ _id: ObjectId(fileId) });
 
       if (!file) return res.status(404).json({ error: 'Not found' });
 
-      if (!file.isPublic && (!user || !file)) {
+      if (!file.isPublic && (!userId || !file)) {
         return res.status(404).json({ error: 'Not found' });
       }
 
@@ -348,10 +338,6 @@ class FilesController {
 
       // Get the MIME type based on the filename
       const mimeType = mimeTypes.lookup(file.name);
-
-      if (!mimeType) {
-        return res.status(500).json({ error: 'Unknown MIME type' });
-      }
 
       // Read the file content
       const fileContent = await fs.promises.readFile(file.localPath);
