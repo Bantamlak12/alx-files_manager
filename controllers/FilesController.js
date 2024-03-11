@@ -322,9 +322,7 @@ class FilesController {
         .collection('files')
         .findOne({ _id: ObjectId(fileId) });
 
-      if (!file) return res.status(404).json({ error: 'Not found' });
-
-      if (!file.isPublic && file.userId.toString() !== userId) {
+      if (!file || (!file.isPublic && file.userId.toString() !== userId)) {
         return res.status(404).json({ error: 'Not found' });
       }
 
@@ -338,7 +336,7 @@ class FilesController {
 
       if (file.type === 'image') {
         res.setHeader('Content-Type', 'image/*');
-        return res.status(200).send(file.localPath);
+        return res.status(200).sendFile(file.localPath);
       }
 
       // Get the MIME type based on the filename
