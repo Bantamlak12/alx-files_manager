@@ -336,6 +336,11 @@ class FilesController {
         return res.status(404).json({ error: 'Not found' });
       }
 
+      if (file.type === 'image') {
+        res.setHeader('Content-Type', 'image/*');
+        return res.status(200).send(file.localPath);
+      }
+
       // Get the MIME type based on the filename
       const mimeType = mimeTypes.lookup(file.name);
 
