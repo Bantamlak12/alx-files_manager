@@ -1,10 +1,13 @@
 const fs = require('fs');
 const path = require('path');
+const Bull = require('bull');
 const mimeTypes = require('mime-types');
 const { ObjectId } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
 const dbClient = require('../utils/db');
 const redisClient = require('../utils/redis');
+
+const fileQueue = new Bull('fileQueue');
 
 class FilesController {
   static async postUpload(req, res) {
@@ -103,6 +106,10 @@ class FilesController {
         id: _id,
         ...rest,
       };
+
+      if (type === 'image') {
+        await fileQueue.add({ userId, fileId: newFile.ops[0]._id.toString() });
+      }
 
       return res.status(201).json(response);
     } catch (err) {
@@ -312,6 +319,7 @@ class FilesController {
   static async getFile(req, res) {
     const token = req.headers['x-token'];
     const fileId = req.params.id;
+    const { size } = req.query;
 
     try {
       // Get the user Id using the token
@@ -332,6 +340,21 @@ class FilesController {
 
       if (!fs.existsSync(file.localPath)) {
         return res.status(404).json({ error: 'Not found' });
+      }
+
+      if (size && ['500', '250', '100'].includes(size)) {
+        const thunmnailPath = size
+          ? `${file.localPath}_${size}`
+          : file.localPath;
+
+        if (!fs.existsSync(thunmnailPath)) {
+          return res.status(404).json({ error: 'Not found' });
+        }
+        const mimeType = mimeTypes.lookup(file.name);
+
+        res.setHeader('Content-Type', mimeType);
+
+        return res.status(200).sendFile(thunmnailPath);
       }
 
       // Get the MIME type based on the filename
